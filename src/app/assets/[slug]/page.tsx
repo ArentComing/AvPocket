@@ -45,9 +45,56 @@ export default function AssetDetailsPage({ params }: Props) {
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const [issueSubmitting, setIssueSubmitting] = useState(false);
 
+  // User & Purchase state
+  const [user, setUser] = useState<any>(null);
+  const [userLicense, setUserLicense] = useState<string | null>(null);
+  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
+
   useEffect(() => {
     fetchAsset();
+    fetchUserAndPurchases();
   }, [slug]);
+
+  async function fetchUserAndPurchases() {
+    try {
+      const resUser = await fetch("/api/auth/me");
+      const dataUser = await resUser.json();
+      if (dataUser.user) {
+        setUser(dataUser.user);
+        // Check purchases
+        const resPurchases = await fetch("/api/user/purchases");
+        const dataPurchases = await resPurchases.json();
+        if (dataPurchases.purchases) {
+          const match = dataPurchases.purchases.find((p: any) => p.asset.slug === slug);
+          if (match) {
+            setUserLicense(match.licenseKey);
+          }
+        }
+      }
+    } catch {}
+  }
+
+  async function handlePurchase() {
+    setPurchasing(true);
+    try {
+      const res = await fetch(`/api/assets/${slug}/purchase`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUserLicense(data.licenseKey);
+        setIsPurchaseModalOpen(false);
+        fetchUserAndPurchases();
+      } else {
+        alert(data.error || "Purchase failed");
+      }
+    } catch {
+      alert("Failed to complete purchase");
+    } finally {
+      setPurchasing(false);
+    }
+  }
 
   async function fetchAsset() {
     try {
@@ -200,15 +247,38 @@ export default function AssetDetailsPage({ params }: Props) {
             </div>
           </div>
 
-          {/* Quick Download CTA for mobile / top */}
+          {/* Purchase / Download CTA */}
           <div className="flex flex-col sm:flex-row md:flex-col gap-3 min-w-[220px]">
-            <a
-              href={`/api/assets/${asset.slug}/download`}
-              className="px-6 py-3.5 rounded-xl font-bold text-sm text-dark-950 bg-brand-500 hover:bg-brand-400 transition-all shadow-lg shadow-brand-500/20 flex items-center justify-center gap-2 group"
-            >
-              <Download className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" />
-              <span>Download {latestVersion ? `v${latestVersion.versionNumber}` : ""}</span>
-            </a>
+            {asset.pricingType === "FREE" || userLicense ? (
+              <div className="space-y-2">
+                {userLicense && (
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+                    <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider block">Licensed ✓</span>
+                    <span className="text-xs font-mono font-bold text-white">{userLicense}</span>
+                  </div>
+                )}
+                <a
+                  href={`/api/assets/${asset.slug}/download`}
+                  className="w-full px-6 py-3.5 rounded-xl font-bold text-sm text-dark-950 bg-brand-500 hover:bg-brand-400 transition-all shadow-lg shadow-brand-500/20 flex items-center justify-center gap-2 group"
+                >
+                  <Download className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" />
+                  <span>Download {latestVersion ? `v${latestVersion.versionNumber}` : ""}</span>
+                </a>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  if (!user) {
+                    alert("Please log in to purchase this asset");
+                    return;
+                  }
+                  setIsPurchaseModalOpen(true);
+                }}
+                className="px-6 py-3.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all shadow-lg shadow-purple-500/25 flex items-center justify-center gap-2"
+              >
+                <span>Buy for {asset.price.toLocaleString("fa-IR")} Toman</span>
+              </button>
+            )}
 
             {asset.sourceCodeUrl && (
               <a
@@ -608,6 +678,59 @@ export default function AssetDetailsPage({ params }: Props) {
           </div>
         </div>
       </div>
+      {/* Purchase Modal */}
+      {isPurchaseModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md rounded-3xl bg-dark-900 border border-white/10 p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-black text-white">Purchase Asset</h3>
+              <button onClick={() => setIsPurchaseModalOpen(false)} className="text-gray-400 hover:text-white">✕</button>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-dark-800 border border-white/5 space-y-3 text-xs">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Asset:</span>
+                <span className="font-bold text-white">{asset.title}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Price:</span>
+                <span className="font-bold text-purple-400 font-mono">{asset.price.toLocaleString("fa-IR")} تومان</span>
+              </div>
+              <div className="flex justify-between border-t border-white/5 pt-2">
+                <span className="text-gray-400">Your Wallet Balance:</span>
+                <span className="font-bold text-brand-400 font-mono">{user?.walletBalance?.toLocaleString("fa-IR") || "0"} تومان</span>
+              </div>
+            </div>
+
+            {user && user.walletBalance < asset.price ? (
+              <div className="space-y-3">
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+                  Insufficient funds in your wallet. You need {(asset.price - user.walletBalance).toLocaleString("fa-IR")} Tomans more.
+                </div>
+                <Link
+                  href="/wallet"
+                  className="w-full py-2.5 rounded-xl font-bold text-xs text-dark-950 bg-brand-500 hover:bg-brand-400 transition-all flex items-center justify-center gap-2"
+                >
+                  Top Up Wallet Now →
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-400">
+                  Clicking confirm will deduct <span className="text-white font-bold">{asset.price.toLocaleString("fa-IR")} Tomans</span> from your wallet and instantly generate your lifetime DRM license key.
+                </p>
+                <button
+                  onClick={handlePurchase}
+                  disabled={purchasing}
+                  className="w-full py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all shadow-lg shadow-purple-500/25 disabled:opacity-50"
+                >
+                  {purchasing ? "Processing Purchase..." : "Confirm & Buy Asset"}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

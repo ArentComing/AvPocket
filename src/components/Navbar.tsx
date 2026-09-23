@@ -123,11 +123,21 @@ export default function Navbar() {
 
             {user ? (
               <div className="flex items-center gap-3">
-                {/* Wallet Badge */}
-                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-dark-800 border border-white/5 text-xs text-brand-300 font-semibold">
+                {/* Wallet Badge Link */}
+                <Link
+                  href="/wallet"
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-dark-800 hover:bg-dark-700 border border-white/5 text-xs text-brand-300 font-semibold transition-colors"
+                >
                   <Wallet className="w-3.5 h-3.5 text-brand-400" />
                   <span>{user.walletBalance.toLocaleString("fa-IR")} تومان</span>
-                </div>
+                </Link>
+
+                <Link
+                  href="/my-purchases"
+                  className="hidden md:flex items-center text-xs font-semibold text-gray-300 hover:text-white transition-colors"
+                >
+                  Licenses
+                </Link>
 
                 {/* User Dropdown Preview */}
                 <div className="flex items-center gap-2 pl-2 border-l border-white/10">

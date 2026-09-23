@@ -120,6 +120,56 @@ A robust, enterprise-grade economy management plugin for Minecraft Bedrock Pocke
       },
     });
     console.log(`✅ Sample plugin seeded: ${demoAsset.title}`);
+
+    // 4. Seed Premium Asset: BattlePassPro
+    const premiumAsset = await prisma.asset.upsert({
+      where: { slug: "battle-pass-pro" },
+      update: {},
+      create: {
+        title: "BattlePassPro",
+        slug: "battle-pass-pro",
+        shortDescription: "Complete seasonal battle pass system with daily quests, tiered rewards, and SQLite persistence.",
+        descriptionMarkdown: `# BattlePassPro for PocketMine-MP
+
+Monetize and engage your player base with seasonal tiers, automated daily missions, and custom rewards.
+
+## Features
+- 🏆 **100 Seasonal Tiers:** Free and Premium battle pass tracks.
+- 🎯 **Daily & Weekly Quests:** Auto-generated missions for mining, PvP, and playtime.
+- 🔒 **AvPocket DRM Protected:** Instant server activation with your license key.
+- 🎨 **FormAPI GUI:** Clean bedrock forms for players to claim items and titles.
+
+## PocketMine API Compatibility
+- Compatible with **PM5** (API \`5.0.0\` to \`5.99.0\`).
+`,
+        type: "PLUGIN",
+        pricingType: "PREMIUM",
+        price: 45000, // 45,000 Tomans
+        status: "APPROVED",
+        authorId: demoUser.id,
+        categoryId: pluginCategory.id,
+        totalDownloads: 42,
+        ratingAvg: 4.8,
+        ratingCount: 5,
+        versions: {
+          create: {
+            versionNumber: "2.0.0",
+            changelog: "Major rewrite for PocketMine-MP 5.0 with async database workers.",
+            channel: "STABLE",
+            targetApi: "5.0.0",
+            minApi: "5.0.0",
+            maxApi: "5.99.0",
+            filePath: "demo/BattlePassPro_v2.0.0.phar",
+            fileName: "BattlePassPro.phar",
+            fileSize: 68400,
+            fileHashSha256: "f4b5c64298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b999",
+            virionsJson: JSON.stringify(["poggit/libasynql", "jojoe77777/FormAPI"]),
+            downloadCount: 42,
+          },
+        },
+      },
+    });
+    console.log(`✅ Premium plugin seeded: ${premiumAsset.title} (Price: 45,000 Tomans)`);
   }
 
   console.log("🎉 Seeding completed successfully!");

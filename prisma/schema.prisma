@@ -59,6 +59,8 @@ model User {
   downloads      DownloadLog[]
   issues         Issue[]
   issueComments  IssueComment[]
+  purchases      Purchase[]
+  transactions   Transaction[]
 
   @@map("users")
 }
@@ -109,6 +111,7 @@ model Asset {
   reviews             Review[]
   downloads           DownloadLog[]
   issues              Issue[]
+  purchases           Purchase[]
 
   @@map("assets")
 }
@@ -212,4 +215,77 @@ model IssueComment {
   createdAt DateTime @default(now())
 
   @@map("issue_comments")
+}
+
+enum PurchaseStatus {
+  COMPLETED
+  REFUNDED
+}
+
+enum TransactionType {
+  DEPOSIT
+  PURCHASE
+  SALE_PAYOUT
+  WITHDRAWAL
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model Purchase {
+  id         String         @id @default(uuid())
+  userId     String
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assetId    String
+  asset      Asset          @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  
+  amount     Int            // In Tomans
+  licenseKey String         @unique
+  status     PurchaseStatus @default(COMPLETED)
+  
+  createdAt  DateTime       @default(now())
+
+  licenseRecord LicenseRecord?
+
+  @@unique([userId, assetId])
+  @@map("purchases")
+}
+
+model Transaction {
+  id          String            @id @default(uuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type        TransactionType
+  amount      Int               // In Tomans
+  description String
+  referenceId String?
+  status      TransactionStatus @default(SUCCESS)
+  
+  createdAt   DateTime          @default(now())
+
+  @@map("transactions")
+}
+
+model LicenseRecord {
+  id            String    @id @default(uuid())
+  purchaseId    String    @unique
+  purchase      Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  
+  licenseKey    String    @unique
+  serverIp      String?
+  serverPort    Int?
+  pmmpVersion   String?
+  lastCheckedAt DateTime?
+  isActive      Boolean   @default(true)
+  isBanned      Boolean   @default(false)
+  banReason     String?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("license_records")
 }
