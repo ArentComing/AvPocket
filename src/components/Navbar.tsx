@@ -113,6 +113,14 @@ export default function Navbar() {
 
           {/* User Actions */}
           <div className="flex items-center gap-3">
+            <Link
+              href="/upload"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-dark-950 bg-brand-400 hover:bg-brand-300 transition-all shadow-sm shadow-brand-500/10"
+            >
+              <UploadCloud className="w-3.5 h-3.5" />
+              <span>Publish</span>
+            </Link>
+
             {user ? (
               <div className="flex items-center gap-3">
                 {/* Wallet Badge */}
