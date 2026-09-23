@@ -1,0 +1,175 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  DEVELOPER
+  ADMIN
+}
+
+enum AssetType {
+  PLUGIN
+  VIRION
+  MAP
+  MODEL
+  CONFIG
+}
+
+enum PricingType {
+  FREE
+  PREMIUM
+}
+
+enum AssetStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum ReleaseChannel {
+  STABLE
+  BETA
+  DEV
+}
+
+model User {
+  id             String    @id @default(uuid())
+  username       String    @unique
+  email          String    @unique
+  passwordHash   String?
+  name           String?
+  avatarUrl      String?
+  bio            String?
+  role           Role      @default(USER)
+  walletBalance  Int       @default(0) // Balance in Tomans
+  githubId       String?   @unique
+  githubUsername String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  assets         Asset[]       @relation("UserAssets")
+  reviews        Review[]
+  downloads      DownloadLog[]
+
+  @@map("users")
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String
+  slug        String    @unique
+  description String?
+  icon        String?   // Lucide icon identifier
+  createdAt   DateTime  @default(now())
+
+  assets      Asset[]
+
+  @@map("categories")
+}
+
+model Asset {
+  id                  String       @id @default(uuid())
+  title               String
+  slug                String       @unique
+  shortDescription    String
+  descriptionMarkdown String       // Full README or description
+  type                AssetType    @default(PLUGIN)
+  pricingType         PricingType  @default(FREE)
+  price               Int          @default(0) // In Tomans (0 for Free)
+  status              AssetStatus  @default(APPROVED)
+  
+  authorId            String
+  author              User         @relation("UserAssets", fields: [authorId], references: [id], onDelete: Cascade)
+
+  categoryId          String
+  category            Category     @relation(fields: [categoryId], references: [id])
+
+  iconUrl             String?
+  bannerUrl           String?
+  sourceCodeUrl       String?      // GitHub or GitLab link
+  issuesUrl           String?      // Issue tracker link
+
+  totalDownloads      Int          @default(0)
+  ratingAvg           Float        @default(0.0)
+  ratingCount         Int          @default(0)
+
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  versions            AssetVersion[]
+  reviews             Review[]
+  downloads           DownloadLog[]
+
+  @@map("assets")
+}
+
+model AssetVersion {
+  id               String         @id @default(uuid())
+  assetId          String
+  asset            Asset          @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  versionNumber    String         // e.g. "1.0.0"
+  changelog        String?
+  channel          ReleaseChannel @default(STABLE)
+  
+  // PocketMine-MP Specific Metadata
+  targetApi        String?        // e.g. "5.0.0" or "4.0.0"
+  minApi           String?
+  maxApi           String?
+  
+  // File details
+  filePath         String
+  fileName         String
+  fileSize         Int            // In bytes
+  fileHashSha256   String
+  
+  // Injected dependencies / virions
+  virionsJson      String?        // JSON array of virions
+  dependenciesJson String?        // JSON array of dependencies
+
+  downloadCount    Int            @default(0)
+  createdAt        DateTime       @default(now())
+
+  downloads        DownloadLog[]
+
+  @@unique([assetId, versionNumber])
+  @@map("asset_versions")
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  assetId   String
+  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  rating    Int      // 1 to 5
+  comment   String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([assetId, userId])
+  @@map("reviews")
+}
+
+model DownloadLog {
+  id         String        @id @default(uuid())
+  assetId    String
+  asset      Asset         @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  versionId  String?
+  version    AssetVersion? @relation(fields: [versionId], references: [id], onDelete: SetNull)
+  userId     String?
+  user       User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  ipAddress  String?
+  createdAt  DateTime      @default(now())
+
+  @@map("download_logs")
+}

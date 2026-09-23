@@ -23,6 +23,14 @@ Thumbs.db
 *.suo
 *.user
 
+# Next.js build output
+.next/
+out/
+
+# Local SQLite databases
+*.db
+*.db-journal
+
 # Temporary storage & build artifacts
 /storage/*.key
 /storage/logs/
