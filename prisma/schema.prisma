@@ -57,6 +57,8 @@ model User {
   assets         Asset[]       @relation("UserAssets")
   reviews        Review[]
   downloads      DownloadLog[]
+  issues         Issue[]
+  issueComments  IssueComment[]
 
   @@map("users")
 }
@@ -106,6 +108,7 @@ model Asset {
   versions            AssetVersion[]
   reviews             Review[]
   downloads           DownloadLog[]
+  issues              Issue[]
 
   @@map("assets")
 }
@@ -172,4 +175,41 @@ model DownloadLog {
   createdAt  DateTime      @default(now())
 
   @@map("download_logs")
+}
+
+enum IssueStatus {
+  OPEN
+  CLOSED
+}
+
+model Issue {
+  id        String       @id @default(uuid())
+  assetId   String
+  asset     Asset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  title     String
+  body      String
+  status    IssueStatus  @default(OPEN)
+  
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  comments  IssueComment[]
+
+  @@map("issues")
+}
+
+model IssueComment {
+  id        String   @id @default(uuid())
+  issueId   String
+  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  body      String
+  createdAt DateTime @default(now())
+
+  @@map("issue_comments")
 }
