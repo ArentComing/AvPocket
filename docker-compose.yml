@@ -103,7 +103,7 @@ services:
     depends_on:
       - app
     ports:
-      - "80:80"
+      - "8707:80"
       - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
