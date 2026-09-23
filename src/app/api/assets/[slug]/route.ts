@@ -58,6 +58,10 @@ export async function GET(
           },
           orderBy: { createdAt: "desc" },
         },
+        ciBuilds: {
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        },
       },
     });
 

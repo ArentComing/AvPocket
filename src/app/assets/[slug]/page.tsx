@@ -17,7 +17,10 @@ import {
   User, 
   PlusCircle, 
   Layers,
-  ArrowLeft
+  ArrowLeft,
+  Cpu,
+  Terminal,
+  GitBranch
 } from "lucide-react";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 
@@ -31,7 +34,8 @@ export default function AssetDetailsPage({ params }: Props) {
 
   const [asset, setAsset] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "versions" | "reviews" | "issues">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "versions" | "reviews" | "issues" | "ci">("overview");
+  const [activeBuildLog, setActiveBuildLog] = useState<string | null>(null);
 
   // Review state
   const [rating, setRating] = useState(5);
@@ -348,6 +352,18 @@ export default function AssetDetailsPage({ params }: Props) {
               <AlertCircle className="w-4 h-4" />
               <span>Issues ({asset.issues.length})</span>
             </button>
+
+            <button
+              onClick={() => setActiveTab("ci")}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                activeTab === "ci"
+                  ? "bg-dark-800 text-brand-400 border border-white/10"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              <Cpu className="w-4 h-4" />
+              <span>CI & Virions ({asset.ciBuilds?.length || 0})</span>
+            </button>
           </div>
 
           {/* TAB 1: README / Overview */}
@@ -571,6 +587,143 @@ export default function AssetDetailsPage({ params }: Props) {
                         {issueSubmitting ? "Submitting..." : "Open Issue"}
                       </button>
                     </form>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 5: CI & Virions (Poggit Style) */}
+          {activeTab === "ci" && (
+            <div className="space-y-6">
+              {/* Webhook Connection Guide */}
+              <div className="rounded-3xl bg-dark-900 border border-white/10 p-6 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <GitBranch className="w-4 h-4 text-brand-400" />
+                    GitHub Automated CI Builder (Poggit Alternative)
+                  </h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-brand-500/10 text-brand-400 border border-brand-500/20">
+                    Active
+                  </span>
+                </div>
+
+                <p className="text-xs text-gray-300 leading-relaxed">
+                  Connect your GitHub repository to automatically compile standalone <code className="text-brand-300 font-mono">.phar</code> packages and inject virions whenever you push a commit or tag a release.
+                </p>
+
+                <div className="p-3 rounded-2xl bg-dark-800 border border-white/5 space-y-2 text-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <span className="text-gray-400">Payload URL:</span>
+                    <span className="font-mono text-brand-400 font-bold select-all">https://av-api.ir/api/ci/webhook</span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-t border-white/5 pt-2">
+                    <span className="text-gray-400">Content Type:</span>
+                    <span className="font-mono text-gray-200">application/json</span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-t border-white/5 pt-2">
+                    <span className="text-gray-400">Trigger Events:</span>
+                    <span className="font-mono text-gray-200">Pushes, Releases</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Injected Virions Info */}
+              <div className="rounded-3xl bg-dark-900 border border-white/10 p-6 space-y-3">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-brand-400" />
+                  Virion Injection & Shading Engine
+                </h3>
+                <p className="text-xs text-gray-400">
+                  AvPocket automatically resolves and bundles declared virions into the <code className="text-brand-300">src/</code> tree of the compiled .phar so server owners never encounter ClassNotFound exceptions:
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                  <div className="p-3 rounded-xl bg-dark-800 border border-white/5 text-xs">
+                    <span className="font-bold text-white block">poggit/libasynql</span>
+                    <span className="text-[11px] text-gray-400 font-mono">Async DB Connector</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-dark-800 border border-white/5 text-xs">
+                    <span className="font-bold text-white block">jojoe77777/FormAPI</span>
+                    <span className="text-[11px] text-gray-400 font-mono">Bedrock Form UI</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-dark-800 border border-white/5 text-xs">
+                    <span className="font-bold text-white block">muqsit/invmenu</span>
+                    <span className="text-[11px] text-gray-400 font-mono">Virtual Chest GUI</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* CI Builds List */}
+              <div className="rounded-3xl bg-dark-900 border border-white/10 p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Terminal className="w-4 h-4 text-brand-400" />
+                    Build History ({asset.ciBuilds?.length || 0})
+                  </h3>
+                </div>
+
+                {!asset.ciBuilds || asset.ciBuilds.length === 0 ? (
+                  <div className="py-8 text-center text-gray-500 text-xs">
+                    No automated CI builds yet. Pushing a Git commit will trigger the first build.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {asset.ciBuilds.map((build: any) => (
+                      <div key={build.id} className="p-4 rounded-2xl bg-dark-800 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2.5 h-2.5 rounded-full ${
+                              build.status === "SUCCESS"
+                                ? "bg-emerald-400"
+                                : build.status === "BUILDING"
+                                ? "bg-amber-400 animate-ping"
+                                : "bg-red-400"
+                            }`} />
+                            <span className="text-xs font-mono font-bold text-white">{build.gitRef}</span>
+                            <span className="text-[10px] font-mono text-gray-400">({build.commitHash})</span>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              build.status === "SUCCESS"
+                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                : "bg-red-500/10 text-red-400 border border-red-500/20"
+                            }`}>
+                              {build.status}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-gray-500 block">
+                            Triggered via {build.trigger} on {new Date(build.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+
+                        {build.log && (
+                          <button
+                            onClick={() => setActiveBuildLog(build.log)}
+                            className="px-3.5 py-1.5 rounded-xl font-bold text-xs text-gray-300 bg-dark-700 hover:bg-white/10 border border-white/10 transition-all flex items-center gap-1.5 self-start sm:self-center"
+                          >
+                            <Terminal className="w-3.5 h-3.5 text-brand-400" />
+                            <span>View Console Log</span>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Build Log Modal */}
+              {activeBuildLog && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                  <div className="w-full max-w-3xl rounded-3xl bg-dark-950 border border-white/15 p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                        <Terminal className="w-4 h-4 text-brand-400" />
+                        CI Compiler Console Output
+                      </h3>
+                      <button onClick={() => setActiveBuildLog(null)} className="text-gray-400 hover:text-white">✕</button>
+                    </div>
+
+                    <pre className="p-4 rounded-2xl bg-black border border-white/10 font-mono text-xs text-emerald-400 overflow-x-auto max-h-[60vh] leading-relaxed select-all">
+                      {activeBuildLog}
+                    </pre>
                   </div>
                 </div>
               )}

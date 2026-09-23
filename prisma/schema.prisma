@@ -107,11 +107,15 @@ model Asset {
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
 
+  githubRepo          String?      // e.g. "ArentComing/FastWarps"
+  webhookSecret       String?
+
   versions            AssetVersion[]
   reviews             Review[]
   downloads           DownloadLog[]
   issues              Issue[]
   purchases           Purchase[]
+  ciBuilds            CiBuild[]
 
   @@map("assets")
 }
@@ -288,4 +292,45 @@ model LicenseRecord {
   updatedAt     DateTime  @updatedAt
 
   @@map("license_records")
+}
+
+enum BuildStatus {
+  PENDING
+  BUILDING
+  SUCCESS
+  FAILED
+}
+
+model CiBuild {
+  id           String         @id @default(uuid())
+  assetId      String
+  asset        Asset          @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  
+  commitHash   String
+  gitRef       String         // e.g. "refs/tags/v1.0.0" or "refs/heads/main"
+  trigger      String         // "WEBHOOK", "MANUAL", "RELEASE"
+  status       BuildStatus    @default(PENDING)
+  log          String?        // Full console build output
+  channel      ReleaseChannel @default(STABLE)
+  
+  artifactPath String?        // Path to built .phar
+  artifactSize Int?           // In bytes
+  
+  createdAt    DateTime       @default(now())
+  completedAt  DateTime?
+
+  @@map("ci_builds")
+}
+
+model VirionPackage {
+  id          String   @id @default(uuid())
+  name        String   @unique // e.g. "poggit/libasynql" or "jojoe77777/FormAPI"
+  namespace   String   // Root namespace e.g. "poggit\libasynql"
+  version     String   // e.g. "0.1.0"
+  description String?
+  sourceUrl   String?
+  virionCode  String?  // Bundled PHP files JSON or code manifest
+  createdAt   DateTime @default(now())
+
+  @@map("virion_packages")
 }
