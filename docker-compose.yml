@@ -1,0 +1,147 @@
+# ==============================================================
+# AvPocket - Docker Compose Production Stack
+# Domain: av-api.ir | Stack: Next.js + PostgreSQL + Redis + Nginx
+# ==============================================================
+
+services:
+  # ── PostgreSQL Database ──
+  postgres:
+    image: postgres:16-alpine
+    container_name: avpocket-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: avpocket
+      POSTGRES_USER: avpocket
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-AvP0ck3t_Secur3_DB!2026}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U avpocket -d avpocket"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - avpocket-network
+
+  # ── Redis (Queue & Cache) ──
+  redis:
+    image: redis:7-alpine
+    container_name: avpocket-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - avpocket-network
+
+  # ── Next.js Application ──
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: avpocket-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://avpocket:${POSTGRES_PASSWORD:-AvP0ck3t_Secur3_DB!2026}@postgres:5432/avpocket?schema=public
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-very-long-secret}
+      NEXT_PUBLIC_APP_URL: https://av-api.ir
+      UPLOAD_DIR: /app/storage/uploads
+      REDIS_URL: redis://redis:6379
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
+      NODE_ENV: production
+    volumes:
+      - uploads_data:/app/storage/uploads
+      - app_logs:/app/storage/logs
+    expose:
+      - "3000"
+    networks:
+      - avpocket-network
+
+  # ── CI Worker (Background Build Queue) ──
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: avpocket-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://avpocket:${POSTGRES_PASSWORD:-AvP0ck3t_Secur3_DB!2026}@postgres:5432/avpocket?schema=public
+      REDIS_URL: redis://redis:6379
+      WORKER_MODE: "true"
+      NODE_ENV: production
+    volumes:
+      - uploads_data:/app/storage/uploads
+      - worker_logs:/app/storage/logs
+    command: ["node", "server.js"]
+    networks:
+      - avpocket-network
+
+  # ── Nginx Reverse Proxy + SSL ──
+  nginx:
+    image: nginx:alpine
+    container_name: avpocket-nginx
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - certbot_etc:/etc/letsencrypt:ro
+      - certbot_var:/var/lib/letsencrypt
+      - webroot:/var/www/certbot
+    networks:
+      - avpocket-network
+
+  # ── Certbot (Auto SSL with Let's Encrypt) ──
+  certbot:
+    image: certbot/certbot
+    container_name: avpocket-certbot
+    volumes:
+      - certbot_etc:/etc/letsencrypt
+      - certbot_var:/var/lib/letsencrypt
+      - webroot:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  uploads_data:
+    driver: local
+  app_logs:
+    driver: local
+  worker_logs:
+    driver: local
+  certbot_etc:
+    driver: local
+  certbot_var:
+    driver: local
+  webroot:
+    driver: local
+
+networks:
+  avpocket-network:
+    driver: bridge

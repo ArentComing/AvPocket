@@ -1,0 +1,44 @@
+# Docker
+.dockerignore
+
+# Dependencies
+node_modules
+npm-debug.log*
+
+# Local dev files
+.env
+.env.local
+.env.backup
+*.db
+*.db-journal
+
+# Build
+.next
+out
+dist
+build
+
+# IDE
+.idea
+.vscode
+*.suo
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Tests (not needed in production image)
+tests/
+
+# Backups
+backups/
+
+# Docs
+README.md
+ROADMAP.md
+LICENSE

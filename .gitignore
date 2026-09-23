@@ -40,3 +40,9 @@ out/
 /dist/
 /build/
 *.phar
+
+# Backups
+/backups/
+
+# Docker volumes
+/certbot/
