@@ -1,6 +1,7 @@
 # ==============================================================
 # AvPocket - Docker Compose Production Stack
-# Domain: av-api.ir | Stack: Next.js + PostgreSQL + Redis + Nginx
+# Domain: av-api.ir | Stack: Next.js + PostgreSQL + Redis
+# Note: Nginx & SSL are managed on the host, not inside Docker
 # ==============================================================
 
 services:
@@ -66,8 +67,8 @@ services:
     volumes:
       - uploads_data:/app/storage/uploads
       - app_logs:/app/storage/logs
-    expose:
-      - "3000"
+    ports:
+      - "127.0.0.1:3000:3000"
     networks:
       - avpocket-network
 
@@ -95,35 +96,6 @@ services:
     networks:
       - avpocket-network
 
-  # ── Nginx Reverse Proxy + SSL ──
-  nginx:
-    image: nginx:alpine
-    container_name: avpocket-nginx
-    restart: unless-stopped
-    depends_on:
-      - app
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - certbot_etc:/etc/letsencrypt:ro
-      - certbot_var:/var/lib/letsencrypt
-      - webroot:/var/www/certbot
-    networks:
-      - avpocket-network
-
-  # ── Certbot (Auto SSL with Let's Encrypt) ──
-  certbot:
-    image: certbot/certbot
-    container_name: avpocket-certbot
-    volumes:
-      - certbot_etc:/etc/letsencrypt
-      - certbot_var:/var/lib/letsencrypt
-      - webroot:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-
 volumes:
   postgres_data:
     driver: local
@@ -134,12 +106,6 @@ volumes:
   app_logs:
     driver: local
   worker_logs:
-    driver: local
-  certbot_etc:
-    driver: local
-  certbot_var:
-    driver: local
-  webroot:
     driver: local
 
 networks:
