@@ -3,13 +3,13 @@
 # Target: Linux amd64 | Next.js 15 Standalone + PHP 8.x
 # ==============================================================
 
-# ---- Stage 1: Install dependencies ----
+# ---- Stage 1: Install ALL dependencies (including dev for build) ----
 FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm ci
 
 # ---- Stage 2: Build the application ----
 FROM node:20-alpine AS builder
@@ -37,8 +37,8 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Install PHP CLI for CI phar builder
-RUN apk add --no-cache php82 php82-phar php82-json php82-mbstring php82-openssl \
-    && ln -sf /usr/bin/php82 /usr/bin/php
+RUN apk add --no-cache php83 php83-phar php83-mbstring php83-openssl \
+    && ln -sf /usr/bin/php83 /usr/bin/php
 
 # Copy built application
 COPY --from=builder /app/public ./public
