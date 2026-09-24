@@ -49,17 +49,22 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
 # Copy PHP scripts for CI builder
 COPY --from=builder /app/src/scripts ./src/scripts
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
+
 # Create storage directories
 RUN mkdir -p storage/uploads storage/logs \
-    && chown -R nextjs:nodejs storage
+    && chown -R nextjs:nodejs storage \
+    && chmod +x docker-entrypoint.sh
 
 # Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-3000}/ || exit 1
 
 USER nextjs
 
@@ -68,4 +73,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["./docker-entrypoint.sh"]
